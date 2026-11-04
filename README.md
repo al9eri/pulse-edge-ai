@@ -4,6 +4,8 @@
 ![Quantization](https://img.shields.io/badge/Model-4MB_Int8_TFLite-10B981?style=flat-square&labelColor=0B0F17)
 ![Latency](https://img.shields.io/badge/Inference-1.5ms%2Fwin-F59E0B?style=flat-square&labelColor=0B0F17)
 ![Flash UI](https://img.shields.io/badge/Embedded_HUD-68KB_Gzipped-A855F7?style=flat-square&labelColor=0B0F17)
+[![CI](https://github.com/al9eri/pulse-edge-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/al9eri/pulse-edge-ai/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **PULSE** is a privacy-preserving, zero-cloud physiological anomaly detection engine that executes end-to-end on bare-metal microcontroller silicon (**ESP32-S3 + MAX30102 PPG**). Raw biometric waveforms never leave the device: signal conditioning, quality gating, one-class anomaly scoring, and real-time WebSocket UI serving run directly on the board.
 
@@ -47,6 +49,32 @@ flowchart LR
 ├── security/           # Transport & device hardening utilities
 └── tests/              # Numerical parity & pipeline verification tests
 ```
+
+---
+
+## Hardware Pinout & Wiring
+
+| ESP32-S3 Pin | MAX30102 PPG Pin | Function | Notes |
+| :--- | :--- | :--- | :--- |
+| **`GPIO 4`** | `SDA` | I2C Serial Data | 4.7 kΩ pull-up to 3.3V |
+| **`GPIO 5`** | `SCL` | I2C Serial Clock | 400 kHz Fast-Mode I2C bus |
+| **`3V3`** | `VIN` | Power Supply | Regulated 3.3V DC rail |
+| **`GND`** | `GND` | Ground Reference | Shared common ground |
+| **`GPIO 6`** | `INT` | Sensor Interrupt (Optional) | Active-low FIFO almost-full interrupt |
+
+---
+
+## Control-Plane Security & STRIDE Mitigations
+
+To protect medical telemetry and threshold calibrations against tampering over shared worksite or hospital Wi-Fi hotspots, the supervision server implements enterprise-grade security controls (`security/`):
+- **Constant-Time RBAC:** 128-bit cryptographically secure tokens (`admin` vs. `reviewer`) verified with `hmac.compare_digest` to prevent timing attacks.
+- **CSRF Origin Guard:** All state-changing routes (`POST`, `DELETE`, `PATCH`) enforce strict `Origin == Host` header validation.
+- **Sliding-Window Rate Limiting (`HTTP 429`):** Short-circuits brute-force attempts after 10 failed authentications within 60 seconds.
+- **SHA-256 Tamper-Evident Hash Chain:** Write events and access violations form an immutable hash-chained audit log ($H_i = \text{SHA256}(\text{entry}_i, H_{i-1})$), verifiable in $O(N)$ time.
+
+<div align="center">
+  <img src="./security/fig_security_benchmark.png" width="85%" alt="PULSE Security Benchmark Latency" />
+</div>
 
 ---
 
