@@ -3,7 +3,7 @@
 [![CI](https://github.com/al9eri/pulse-edge-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/al9eri/pulse-edge-ai/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-On-device physiological anomaly detection and telemetry supervision on bare-metal microcontroller silicon (**ESP32-S3 + MAX30102 PPG**). Developed as a Senior Design Project (`COSC 498`) at Khalifa University.
+On-device physiological anomaly detection and telemetry supervision on bare-metal microcontroller silicon (**ESP32-S3 + MAX30102 PPG**).
 
 Raw photoplethysmogram (PPG) waveforms are sampled over I2C, conditioned through a causal second-order section (SOS) bandpass filter, gated for contact quality, and scored for anomalies on-device (Mahalanobis distance on Core 0) with an optional quantized host autoencoder (Int8 1D-CNN) and SHA-256 tamper-evident supervision server.
 
