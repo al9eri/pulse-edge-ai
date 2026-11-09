@@ -1,13 +1,11 @@
-# PULSE // Bare-Metal Edge-AI Biometric Anomaly Engine
+# pulse-edge-ai
 
-![Target Silicon](https://img.shields.io/badge/Silicon-ESP32--S3--N16R8-00F0FF?style=flat-square&labelColor=0B0F17)
-![Quantization](https://img.shields.io/badge/Model-4MB_Int8_TFLite-10B981?style=flat-square&labelColor=0B0F17)
-![Latency](https://img.shields.io/badge/Inference-1.5ms%2Fwin-F59E0B?style=flat-square&labelColor=0B0F17)
-![Flash UI](https://img.shields.io/badge/Embedded_HUD-68KB_Gzipped-A855F7?style=flat-square&labelColor=0B0F17)
 [![CI](https://github.com/al9eri/pulse-edge-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/al9eri/pulse-edge-ai/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-**PULSE** is a privacy-preserving, zero-cloud physiological anomaly detection engine that executes end-to-end on bare-metal microcontroller silicon (**ESP32-S3 + MAX30102 PPG**). Raw biometric waveforms never leave the device: signal conditioning, quality gating, one-class anomaly scoring, and real-time WebSocket UI serving run directly on the board.
+On-device physiological anomaly detection and telemetry supervision on bare-metal microcontroller silicon (**ESP32-S3 + MAX30102 PPG**). Developed as a Senior Design Project (`COSC 498`) at Khalifa University.
+
+Raw photoplethysmogram (PPG) waveforms are sampled over I2C, conditioned through a causal second-order section (SOS) bandpass filter, gated for contact quality, and scored for anomalies on-device (Mahalanobis distance on Core 0) with an optional quantized host autoencoder (Int8 1D-CNN) and SHA-256 tamper-evident supervision server.
 
 ---
 
@@ -15,26 +13,34 @@
 
 ```mermaid
 flowchart LR
-    A["MAX30102 Optical Rig<br/>Raw PPG + SpO₂"] -->|"I²C"| B["C Signal Conditioning<br/>0.7–3 Hz Causal SOS · 64 Hz"]
-    B --> C["Adaptive SQI Gate<br/>Contact · Drift · Spike Reject"]
-    C --> D["On-Device C++ Detector<br/>Core 0 · 210 ms/s · Self-Tested"]
-    C -->|"64 Hz WebSocket"| E["Host Fleet Scorer (Optional)<br/>Int8 1D-Conv Autoencoder · 1.5 ms"]
-    D --> F["Embedded Flash HUD<br/>68 KB Gzipped · TFT + Browser"]
+    A["MAX30102 Optical Sensor<br/>Raw PPG + SpO2"] -->|"I2C"| B["C Signal Conditioning<br/>0.7-3 Hz Causal SOS @ 64 Hz"]
+    B --> C["Adaptive SQI Gate<br/>Contact / Drift / Spike Reject"]
+    C --> D["On-Device C++ Detector<br/>Core 0 · ~210 ms/s"]
+    C -->|"64 Hz WebSocket"| E["Host Fleet Scorer (Optional)<br/>Int8 1D-Conv Autoencoder"]
+    D --> F["Embedded Flash UI<br/>68 KB Gzipped · TFT / Web"]
     E -->|"/flag Override"| F
 ```
 
 ---
 
-## Verified Engineering Benchmarks
+## Benchmarks & Implementation Details
 
 | Subsystem | Metric / Verification | Implementation |
 | :--- | :--- | :--- |
-| **1D-Conv Autoencoder** | **0.706 PR-AUC** (WESAD Leave-One-Subject-Out) | Bottleneck-redesigned one-class neural detector (`anomaly/`) |
-| **Quantized Edge Export** | **4.0 MB `int8` TFLite** · **1.5 ms / window** | Fits `ESP32-S3-N16R8` PSRAM envelope with zero host dependency |
-| **On-Board C++ Kernel** | **0.635 PR-AUC** · **~210 ms/s on Core 0** | Ported Mahalanobis + movement gate (`pulse_display/board_detector.h`), boot-verified (`/health -> self=pass`) |
+| **1D-Conv Autoencoder** | **0.706 PR-AUC** (WESAD Leave-One-Subject-Out) | Bottleneck one-class neural detector (`anomaly/`) |
+| **Quantized Edge Export** | **4.0 MB `int8` TFLite** · **1.5 ms / window** | Fits `ESP32-S3-N16R8` PSRAM envelope |
+| **On-Board C++ Kernel** | **0.635 PR-AUC** · **~210 ms/s on Core 0** | Ported Mahalanobis + movement gate (`pulse_display/board_detector.h`) |
 | **C Signal Conditioning** | **`1.7e-9` numerical parity** vs. Python `scipy` | Causal `sosfilt` bandpass + 64 Hz resampler running natively in firmware |
-| **Sensor-Transfer Calibration** | **100% $\rightarrow$ 10% false-positive rate** | Live per-user calm baseline calibration (`anomaly/device_calibrate.py`) |
-| **Zero-Cloud Embedded UI** | **68 KB gzipped** (232 KB raw) in SPIFFS/Flash | Served directly over ESP32 Wi-Fi + real-time 64 Hz WebSocket telemetry |
+| **Sensor Calibration** | Baseline adaptation | Per-user calm baseline calibration (`anomaly/device_calibrate.py`) |
+| **Embedded UI** | **68 KB gzipped** (232 KB raw) in SPIFFS/Flash | Served directly over ESP32 Wi-Fi + real-time 64 Hz WebSocket telemetry |
+
+---
+
+## Scope & Known Limitations
+
+- **Motion Artifacts:** Like all single-site reflective PPG sensors (MAX30102), optical readings degrade significantly during gross hand or wrist movements. An adaptive SQI gate rejects low-quality windows rather than guessing.
+- **LOSO Baseline:** The 1D-CNN achieves `0.706` PR-AUC on the benchmark WESAD dataset under Leave-One-Subject-Out (LOSO) cross-validation. Real-world generalization varies by skin tone and contact pressure; an onboarding calibration script (`anomaly/device_calibrate.py`) is provided to establish per-user baselines.
+- **CI Environment:** Automated CI tests (`tests/`) run numerical parity checks against recorded sensor sessions and simulated serial streams without requiring physical hardware attached to GitHub runners.
 
 ---
 
