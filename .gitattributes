@@ -1,0 +1,4 @@
+*.h linguist-language=C
+*.ino linguist-language=C
+anomaly/** linguist-documentation
+launcher/** linguist-documentation
