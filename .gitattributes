@@ -1,4 +1,2 @@
-*.h linguist-language=C
-*.ino linguist-language=C
-anomaly/** linguist-documentation
-launcher/** linguist-documentation
+pipeline/static/vendor/* linguist-vendored
+pulse/* linguist-vendored
